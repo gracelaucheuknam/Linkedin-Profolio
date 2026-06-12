@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Commerce Analytics Dashboard · Data Analyst Portfolio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f9f9f8;
+    --surface: #ffffff;
+    --surface2: #f2f1ee;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #9a9992;
+    --blue: #378ADD;
+    --blue-light: #E6F1FB;
+    --teal: #1D9E75;
+    --teal-light: #E1F5EE;
+    --amber: #EF9F27;
+    --amber-light: #FAEEDA;
+    --coral: #D85A30;
+    --coral-light: #FAECE7;
+    --purple: #7F77DD;
+    --purple-light: #EEEDFE;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181816;
+      --surface: #222220;
+      --surface2: #2c2c2a;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --text: #f0efe9;
+      --text2: #b4b2a9;
+      --text3: #6e6d67;
+      --blue: #6aabf0;
+      --blue-light: #0c2a44;
+      --teal: #2ec994;
+      --teal-light: #04281a;
+      --amber: #f5b547;
+      --amber-light: #2e1f05;
+      --coral: #f07050;
+      --coral-light: #2e1008;
+      --purple: #a49deb;
+      --purple-light: #1e1c40;
+    }
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* Header */
+  .header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 0.5px solid var(--border); }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  .header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; border: 0.5px solid var(--border2); color: var(--text2); background: var(--surface); }
+  .live-badge { font-size: 11px; padding: 4px 10px; background: var(--teal-light); color: var(--teal); border-radius: 20px; font-weight: 500; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .live-dot { width: 6px; height: 6px; background: var(--teal); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 24px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; }
+  .tab { font-size: 13px; padding: 6px 16px; border-radius: 6px; border: none; background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Panel */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .filter-row label { font-size: 12px; color: var(--text2); }
+  select { font-size: 12px; padding: 5px 10px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: var(--surface); color: var(--text); font-family: var(--font); cursor: pointer; }
+
+  /* Section label */
+  .section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; margin-top: 24px; }
+  .section-label:first-child { margin-top: 0; }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .metric { background: var(--surface2); border-radius: var(--radius); padding: 14px 16px; }
+  .metric .mlabel { font-size: 11px; color: var(--text3); margin-bottom: 5px; letter-spacing: 0.03em; }
+  .metric .mvalue { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; }
+  .metric .mdelta { font-size: 11px; margin-top: 4px; }
+  .delta-up { color: var(--teal); }
+  .delta-down { color: var(--coral); }
+
+  /* Cards */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .card-sub { font-size: 11px; font-weight: 400; color: var(--text3); }
+  .grid-2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid-equal { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 700px) { .grid-2, .grid-equal { grid-template-columns: 1fr; } }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--text2); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 2px; }
+
+  /* Bar rows */
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .bar-row .bcat { width: 72px; color: var(--text2); text-align: right; font-size: 11px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 14px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .bar-row .bval { width: 42px; font-size: 11px; color: var(--text2); }
+
+  /* Funnel */
+  .funnel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .funnel-stage { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; }
+  .funnel-bar { height: 24px; border-radius: 3px; display: flex; align-items: center; padding-left: 10px; font-size: 11px; font-weight: 500; min-width: 50px; transition: all 0.5s; }
+  .funnel-pct { font-size: 11px; color: var(--text3); width: 38px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { font-size: 10px; font-weight: 600; color: var(--text3); text-align: left; padding: 6px 10px; border-bottom: 0.5px solid var(--border); letter-spacing: 0.05em; text-transform: uppercase; }
+  td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  .badge-high { background: var(--teal-light); color: var(--teal); }
+  .badge-mid { background: var(--amber-light); color: var(--amber); }
+  .badge-low { background: var(--coral-light); color: var(--coral); }
+
+  /* Insight box */
+  .insight { background: var(--surface2); border-radius: var(--radius); padding: 10px 13px; font-size: 12px; color: var(--text2); line-height: 1.6; margin-top: 12px; }
+  .insight strong { color: var(--text); font-weight: 500; }
+
+  /* Cohort */
+  .cohort-table { border-collapse: separate; border-spacing: 3px; width: 100%; font-size: 11px; }
+  .cohort-table th { background: transparent; font-size: 10px; color: var(--text3); padding: 3px 6px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: none; }
+  .cohort-cell { text-align: center; padding: 5px 4px; border-radius: 4px; font-weight: 500; font-size: 11px; }
+
+  /* ── FORECAST PANEL ── */
+  .forecast-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+  .fc-control { display: flex; flex-direction: column; gap: 5px; }
+  .fc-control label { font-size: 11px; color: var(--text3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .fc-control input[type=range] { width: 150px; }
+  .fc-control .range-val { font-size: 12px; font-weight: 500; color: var(--text); }
+  .fc-stat { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; }
+  .fc-stat .fslabel { font-size: 10px; color: var(--text3); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  .fc-stat .fsval { font-size: 18px; font-weight: 600; color: var(--text); }
+  .fc-stat .fssub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .fc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .method-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .method-pill { font-size: 11px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .method-pill.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .forecast-note { font-size: 11px; color: var(--text3); line-height: 1.6; margin-top: 12px; padding: 10px 13px; background: var(--surface2); border-radius: var(--radius); border-left: 3px solid var(--blue); }
+  .forecast-note strong { color: var(--text2); font-weight: 500; }
+
+  /* ── SQL PANEL ── */
+  .sql-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+  @media (max-width: 750px) { .sql-layout { grid-template-columns: 1fr; } }
+  .sql-sidebar { display: flex; flex-direction: column; gap: 8px; }
+  .query-btn { display: flex; flex-direction: column; padding: 10px 12px; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--surface); cursor: pointer; text-align: left; transition: all 0.15s; }
+  .query-btn:hover { background: var(--surface2); }
+  .query-btn.active { border-color: var(--blue); background: var(--blue-light); }
+  .query-btn .qname { font-size: 12px; font-weight: 500; color: var(--text); }
+  .query-btn .qdesc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .sql-main { display: flex; flex-direction: column; gap: 12px; }
+  .sql-editor { background: #1e1e2e; border-radius: var(--radius-lg); padding: 16px; overflow-x: auto; }
+  .sql-editor pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; white-space: pre; }
+  .sql-kw { color: #89b4fa; }
+  .sql-fn { color: #cba6f7; }
+  .sql-str { color: #a6e3a1; }
+  .sql-num { color: #fab387; }
+  .sql-cmt { color: #6c7086; font-style: italic; }
+  .sql-col { color: #cdd6f4; }
+  .sql-tbl { color: #94e2d5; }
+  .sql-op { color: #f38ba8; }
+  .run-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: none; background: var(--blue); color: #fff; font-size: 12px; font-weight: 500; cursor: pointer; width: fit-content; font-family: var(--font); transition: opacity 0.15s; }
+  .run-btn:hover { opacity: 0.88; }
+  .run-btn .spinner { display: none; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .result-header { display: flex; align-items: center; justify-content: space-between; }
+  .result-rows { font-size: 11px; color: var(--text3); }
+  .exec-time { font-size: 11px; color: var(--teal); background: var(--teal-light); padding: 2px 8px; border-radius: 10px; }
+  .schema-box { background: var(--surface2); border-radius: var(--radius); padding: 12px; font-size: 11px; }
+  .schema-title { font-weight: 500; color: var(--text2); margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+  .schema-col { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 0.5px solid var(--border); color: var(--text2); }
+  .schema-col:last-child { border-bottom: none; }
+  .schema-type { color: var(--text3); font-family: var(--font-mono); font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>E-Commerce Analytics Dashboard</h1>
+        <p>FY 2024 · Global Retail · Data Analyst Portfolio</p>
+        <div class="tags">
+          <span class="tag">SQL</span><span class="tag">Python</span><span class="tag">Tableau</span>
+          <span class="tag">A/B Testing</span><span class="tag">Cohort Analysis</span>
+          <span class="tag">Forecasting</span><span class="tag">Time Series</span>
+        </div>
+      </div>
+      <div class="live-badge"><span class="live-dot"></span>Interactive demo</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab" onclick="switchTab('forecast')">Forecast</button>
+    <button class="tab" onclick="switchTab('sql')">SQL Explorer</button>
+  </div>
+
+  <!-- ══════════════════ OVERVIEW PANEL ══════════════════ -->
+  <div class="panel active" id="panel-overview">
+    <div class="filter-row">
+      <label>Region</label>
+      <select id="regionFilter" onchange="updateOverview()">
+        <option value="all">All regions</option>
+        <option value="apac">APAC</option>
+        <option value="emea">EMEA</option>
+        <option value="amer">Americas</option>
+      </select>
+      <label>Category</label>
+      <select id="catFilter" onchange="updateOverview()">
+        <option value="all">All categories</option>
+        <option value="electronics">Electronics</option>
+        <option value="apparel">Apparel</option>
+        <option value="home">Home &amp; Garden</option>
+      </select>
+    </div>
+
+    <div class="section-label">Key performance indicators</div>
+    <div class="metrics">
+      <div class="metric"><div class="mlabel">Total Revenue</div><div class="mvalue" id="kpiRev">$4.2M</div><div class="mdelta delta-up" id="kpiRevD">↑ 18.3% YoY</div></div>
+      <div class="metric"><div class="mlabel">Orders</div><div class="mvalue" id="kpiOrd">38,490</div><div class="mdelta delta-up" id="kpiOrdD">↑ 11.6% YoY</div></div>
+      <div class="metric"><div class="mlabel">Avg. Order Value</div><div class="mvalue" id="kpiAov">$109</div><div class="mdelta delta-up" id="kpiAovD">↑ 6.0% YoY</div></div>
+      <div class="metric"><div class="mlabel">Churn Rate</div><div class="mvalue" id="kpiChurn">12.4%</div><div class="mdelta delta-down" id="kpiChurnD">↑ 1.1pp vs last year</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Monthly revenue trend <span class="card-sub" id="trendLabel">All regions</span></div>
+        <div class="legend">
+          <span><span class="dot" style="background:#378ADD"></span>Revenue</span>
+          <span><span class="dot" style="background:#1D9E75;width:9px;height:2px;border-radius:0;"></span>Target</span>
+        </div>
+        <div style="position:relative;width:100%;height:220px;">
+          <canvas id="trendChart" role="img" aria-label="Monthly revenue vs target, 2024">Revenue trend data</canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Revenue by category</div>
+        <div style="position:relative;width:100%;height:200px;">
+          <canvas id="catChart" role="img" aria-label="Revenue by product category">Category breakdown</canvas>
+        </div>
+        <div class="legend" style="margin-top:10px;margin-bottom:0;">
+          <span><span class="dot" style="background:#378ADD"></span>Electronics 44%</span>
+          <span><span class="dot" style="background:#1D9E75"></span>Apparel 31%</span>
+          <span><span class="dot" style="background:#EF9F27"></span>Home 25%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-equal">
+      <div class="card">
+        <div class="card-title">Conversion funnel</div>
+        <div id="funnelViz"></div>
+        <div class="insight"><strong>Key insight:</strong> Cart → checkout drop-off is 34% — largest friction point. A/B test on checkout UX reduced it by 8pp in Q4.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Revenue by region</div>
+        <div id="regionBars"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title">Customer cohort retention (monthly) <span class="card-sub">% still active</span></div>
+      <div id="cohortGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Top products by revenue</div>
+      <div class="table-wrap">
+        <table id="prodTable">
+          <thead><tr><th>Product</th><th>Category</th><th>Revenue</th><th>Units</th><th>Margin</th><th>Trend</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ FORECAST PANEL ══════════════════ -->
+  <div class="panel" id="panel-forecast">
+    <div class="section-label">Model settings</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:20px;">
+      <div style="flex:1;min-width:260px;" class="card">
+        <div class="card-title">Forecast method</div>
+        <div class="method-pills">
+          <button class="method-pill active" onclick="setMethod('linear','this')">Linear trend</button>
+          <button class="method-pill" onclick="setMethod('exp','this')">Exponential</button>
+          <button class="method-pill" onclick="setMethod('seasonal','this')">Seasonal decomp</button>
+        </div>
+        <div class="forecast-controls">
+          <div class="fc-control">
+            <label>Forecast horizon (months)</label>
+            <input type="range" min="3" max="12" value="6" step="1" id="horizonSlider" oninput="updateForecast()">
+            <span class="range-val"><span id="horizonVal">6</span> months</span>
+          </div>
+          <div class="fc-control">
+            <label>Growth assumption (%/mo)</label>
+            <input type="range" min="-2" max="8" value="2" step="0.5" id="growthSlider" oninput="updateForecast()">
+            <span class="range-val"><span id="growthVal">+2.0</span>%</span>
+          </div>
+          <div class="fc-control">
+            <label>Confidence interval</label>
+            <select id="ciSelect" onchange="updateForecast()" style="width:120px;">
+              <option value="80">80%</option>
+              <option value="90">90%</option>
+              <option value="95" selected>95%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fc-stats" id="fcStats"></div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title">Revenue forecast <span class="card-sub" id="fcChartLabel"></span></div>
+      <div class="legend">
+        <span><span class="dot" style="background:#378ADD"></span>Historical</span>
+        <span><span class="dot" style="background:#7F77DD"></span>Forecast</span>
+        <span><span class="dot" style="background:#7F77DD;opacity:0.25;width:14px;"></span>Confidence band</span>
+      </div>
+      <div style="position:relative;width:100%;height:280px;">
+        <canvas id="forecastChart" role="img" aria-label="Revenue forecast chart">Forecast data</canvas>
+      </div>
+      <div class="forecast-note" id="fcNote"></div>
+    </div>
+
+    <div class="grid-equal">
+      <div class="card">
+        <div class="card-title">Scenario comparison</div>
+        <div style="position:relative;width:100%;height:200px;">
+          <canvas id="scenarioChart" role="img" aria-label="Scenario comparison chart">Scenarios</canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Forecast accuracy (backtesting)</div>
+        <div style="position:relative;width:100%;height:200px;">
+          <canvas id="residualChart" role="img" aria-label="Forecast residuals">Residuals</canvas>
+        </div>
+        <div class="insight" style="margin-top:8px;"><strong>MAPE: 4.2%</strong> · RMSE: $18K · The model backtested against H1 2024 actuals shows strong performance within acceptable error bounds.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ SQL PANEL ══════════════════ -->
+  <div class="panel" id="panel-sql">
+    <div class="sql-layout">
+      <div class="sql-sidebar">
+        <div class="section-label" style="margin-top:0;">Saved queries</div>
+        <button class="query-btn active" onclick="loadQuery(0,this)">
+          <span class="qname">Monthly revenue by region</span>
+          <span class="qdesc">Revenue breakdown with YoY growth</span>
+        </button>
+        <button class="query-btn" onclick="loadQuery(1,this)">
+          <span class="qname">Customer cohort retention</span>
+          <span class="qdesc">M0–M6 retention rates</span>
+        </button>
+        <button class="query-btn" onclick="loadQuery(2,this)">
+          <span class="qname">Conversion funnel</span>
+          <span class="qdesc">Session-to-purchase funnel</span>
+        </button>
+        <button class="query-btn" onclick="loadQuery(3,this)">
+          <span class="qname">RFM segmentation</span>
+          <span class="qdesc">Customer value segmentation</span>
+        </button>
+        <button class="query-btn" onclick="loadQuery(4,this)">
+          <span class="qname">Product margin analysis</span>
+          <span class="qdesc">Revenue vs cost by SKU</span>
+        </button>
+
+        <div class="section-label">Schema</div>
+        <div class="schema-box" id="schemaBox"></div>
+      </div>
+
+      <div class="sql-main">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:12px;font-weight:500;color:var(--text2);" id="queryTitle">Monthly revenue by region</span>
+            <button class="run-btn" id="runBtn" onclick="runQuery()">
+              <span id="runBtnSpinner" class="spinner"></span>
+              ▶ Run query
+            </button>
+          </div>
+          <div class="sql-editor">
+            <pre id="sqlCode"></pre>
+          </div>
+        </div>
+
+        <div class="card" id="resultCard">
+          <div class="result-header" style="margin-bottom:12px;">
+            <div class="card-title" style="margin-bottom:0;">Query results <span class="result-rows" id="resultRows"></span></div>
+            <span class="exec-time" id="execTime"></span>
+          </div>
+          <div class="table-wrap" id="resultTable"></div>
+          <div class="insight" id="queryInsight"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════ DATA ═══════════════ */
+const REGIONS = {
+  all:  { rev:'$4.2M', ord:'38,490', aov:'$109', churn:'12.4%', revD:'↑ 18.3% YoY', ordD:'↑ 11.6% YoY', aovD:'↑ 6.0% YoY', churnD:'↑ 1.1pp', churnUp:false, monthly:[280,305,320,290,350,410,445,470,430,490,520,480], target:[300,310,320,330,350,380,400,420,440,460,480,500] },
+  apac: { rev:'$1.6M', ord:'14,200', aov:'$113', churn:'10.8%', revD:'↑ 24.1% YoY', ordD:'↑ 19.3% YoY', aovD:'↑ 4.0% YoY', churnD:'↓ 0.5pp', churnUp:true,  monthly:[110,120,130,115,140,165,175,190,170,200,210,185], target:[115,120,125,130,140,155,160,170,175,185,195,200] },
+  emea: { rev:'$1.4M', ord:'12,600', aov:'$111', churn:'13.2%', revD:'↑ 15.0% YoY', ordD:'↑ 9.8% YoY',  aovD:'↑ 4.7% YoY', churnD:'↑ 2.0pp', churnUp:false, monthly:[95,105,110,100,120,140,150,160,145,165,180,160], target:[100,105,110,115,120,130,140,145,150,160,165,170] },
+  amer: { rev:'$1.2M', ord:'11,690', aov:'$103', churn:'13.1%', revD:'↑ 12.0% YoY', ordD:'↑ 7.1% YoY',  aovD:'↑ 4.6% YoY', churnD:'↑ 1.5pp', churnUp:false, monthly:[75,80,80,75,90,105,120,120,115,125,130,135], target:[85,85,85,85,90,95,100,105,115,115,120,130] }
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FUTMONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25'];
+
+let trendChart, catChart, forecastChart, scenarioChart, residualChart;
+let currentMethod = 'linear';
+
+/* ═══════════════ TABS ═══════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'forecast') initForecast();
+  if (tab === 'sql') initSQL();
+}
+
+/* ═══════════════ OVERVIEW ═══════════════ */
+const CAT_DATA   = { all:[44,31,25], electronics:[72,18,10], apparel:[15,70,15], home:[20,25,55] };
+const CAT_LABELS = { all:['Electronics','Apparel','Home'], electronics:['Electronics','Accessories','Warranty'], apparel:['Basics','Premium','Luxury'], home:['Furniture','Decor','Garden'] };
+const CAT_COLORS = { all:['#378ADD','#1D9E75','#EF9F27'], electronics:['#378ADD','#85B7EB','#B5D4F4'], apparel:['#1D9E75','#5DCAA5','#9FE1CB'], home:['#EF9F27','#FAC775','#FAEEDA'] };
+
+function buildTrendChart(reg) {
+  const d = REGIONS[reg]; const ctx = document.getElementById('trendChart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, { type:'line', data:{ labels:MONTHS, datasets:[
+    { label:'Revenue', data:d.monthly, borderColor:'#378ADD', backgroundColor:'rgba(55,138,221,0.07)', tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#378ADD', borderWidth:2 },
+    { label:'Target',  data:d.target,  borderColor:'#1D9E75', borderDash:[5,4], tension:0.4, fill:false, pointRadius:0, borderWidth:1.5 }
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>' $'+c.parsed.y+'K'}} }, scales:{ x:{grid:{display:false},ticks:{font:{size:11},color:'#888'}}, y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11},color:'#888',callback:v=>'$'+v+'K'}} } } });
+}
+function buildCatChart(cat) {
+  const ctx = document.getElementById('catChart').getContext('2d');
+  if (catChart) catChart.destroy();
+  catChart = new Chart(ctx, { type:'doughnut', data:{ labels:CAT_LABELS[cat], datasets:[{ data:CAT_DATA[cat], backgroundColor:CAT_COLORS[cat], borderWidth:0, hoverOffset:6 }] }, options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>' '+c.parsed+'%'}} } } });
+}
+function buildFunnel() {
+  const funnel=[{stage:'Sessions',n:520000,pct:100},{stage:'Product view',n:210000,pct:40},{stage:'Add to cart',n:96000,pct:18},{stage:'Checkout',n:63000,pct:12},{stage:'Purchase',n:38490,pct:7.4}];
+  const cols=['#378ADD','#1D9E75','#EF9F27','#D85A30','#7F77DD'];
+  document.getElementById('funnelViz').innerHTML = funnel.map((f,i)=>`<div class="funnel-row"><div class="funnel-stage">${f.stage}</div><div class="funnel-bar" style="background:${cols[i]}22;color:${cols[i]};width:${f.pct}%;min-width:70px;">${f.n.toLocaleString()}</div><div class="funnel-pct">${f.pct}%</div></div>`).join('');
+}
+function buildRegionBars(reg) {
+  const regions=[{name:'APAC',val:1600,col:'#378ADD'},{name:'EMEA',val:1400,col:'#1D9E75'},{name:'Americas',val:1200,col:'#EF9F27'}];
+  document.getElementById('regionBars').innerHTML = regions.map(r=>{
+    const active = reg==='all'||(reg==='apac'&&r.name==='APAC')||(reg==='emea'&&r.name==='EMEA')||(reg==='amer'&&r.name==='Americas');
+    const w=Math.round(r.val/1600*100);
+    return `<div class="bar-row"><div class="bcat">${r.name}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${r.col};opacity:${active?1:0.2}"></div></div><div class="bval" style="opacity:${active?1:0.3}">$${(r.val/1000).toFixed(1)}M</div></div>`;
+  }).join('');
+}
+function buildCohort() {
+  const cohorts=['Jan','Feb','Mar','Apr','May','Jun'];
+  const ret=[[100,68,54,48,42,38],[100,71,57,50,44],[100,69,55,49],[100,72,58],[100,74],[100]];
+  const getCol=v=>v===100?'#378ADD':v>=70?'#1D9E75':v>=55?'#5DCAA5':v>=45?'#EF9F27':v>=35?'#D85A30':'#E24B4A';
+  let h='<div style="overflow-x:auto"><table class="cohort-table"><thead><tr><th style="text-align:left">Cohort</th>';
+  for(let i=0;i<6;i++) h+=`<th>M${i}</th>`;
+  h+='</tr></thead><tbody>';
+  cohorts.forEach((c,i)=>{
+    h+=`<tr><td style="padding:3px 8px;font-size:11px;color:var(--text2);white-space:nowrap;">${c} 2024</td>`;
+    for(let m=0;m<6;m++) {
+      if(m<ret[i].length){ const v=ret[i][m]; h+=`<td><div class="cohort-cell" style="background:${getCol(v)};color:#fff;">${v}%</div></td>`; }
+      else h+=`<td><div class="cohort-cell" style="background:var(--surface2);color:var(--text3);">—</div></td>`;
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="insight"><strong>Retention insight:</strong> M1 retention improved 68% → 74% after onboarding email redesign in May. Target 75% by Q1 2025.</div>';
+  document.getElementById('cohortGrid').innerHTML=h;
+}
+const PRODUCTS=[
+  {name:'ProBook Air 14"',cat:'Electronics',rev:'$412K',units:'2,180',margin:'38%',level:'high'},
+  {name:'Urban Parka (M)',cat:'Apparel',rev:'$198K',units:'5,940',margin:'52%',level:'high'},
+  {name:'SmartHome Hub v2',cat:'Electronics',rev:'$175K',units:'3,100',margin:'41%',level:'high'},
+  {name:'Yoga Mat Pro',cat:'Home',rev:'$120K',units:'8,200',margin:'64%',level:'high'},
+  {name:'Wireless Buds X',cat:'Electronics',rev:'$113K',units:'4,520',margin:'29%',level:'mid'},
+  {name:'Knit Hoodie (L)',cat:'Apparel',rev:'$98K',units:'3,270',margin:'48%',level:'mid'},
+  {name:'Desk Lamp OLED',cat:'Home',rev:'$87K',units:'2,900',margin:'35%',level:'mid'},
+  {name:'USB-C Hub 7-in-1',cat:'Electronics',rev:'$74K',units:'6,140',margin:'22%',level:'low'},
+];
+function buildTable(cat) {
+  const filtered = cat==='all'?PRODUCTS:PRODUCTS.filter(p=>({electronics:'Electronics',apparel:'Apparel',home:'Home'}[cat]===p.cat));
+  document.querySelector('#prodTable tbody').innerHTML = filtered.map(p=>`<tr><td style="font-weight:500">${p.name}</td><td style="color:var(--text2)">${p.cat}</td><td>${p.rev}</td><td style="color:var(--text2)">${p.units}</td><td><span class="badge badge-${p.level}">${p.margin}</span></td><td style="color:${p.level==='high'?'var(--teal)':p.level==='mid'?'var(--amber)':'var(--coral)'}">${p.level==='high'?'↑ Strong':p.level==='mid'?'→ Stable':'↓ Watch'}</td></tr>`).join('');
+}
+function updateOverview() {
+  const reg=document.getElementById('regionFilter').value, cat=document.getElementById('catFilter').value, d=REGIONS[reg];
+  document.getElementById('kpiRev').textContent=d.rev; document.getElementById('kpiOrd').textContent=d.ord;
+  document.getElementById('kpiAov').textContent=d.aov; document.getElementById('kpiChurn').textContent=d.churn;
+  document.getElementById('kpiRevD').textContent=d.revD; document.getElementById('kpiOrdD').textContent=d.ordD;
+  document.getElementById('kpiAovD').textContent=d.aovD; document.getElementById('kpiChurnD').textContent=d.churnD;
+  document.getElementById('kpiChurnD').className='mdelta '+(d.churnUp?'delta-up':'delta-down');
+  document.getElementById('trendLabel').textContent=reg==='all'?'All regions':reg.toUpperCase();
+  buildTrendChart(reg); buildCatChart(cat); buildRegionBars(reg); buildTable(cat);
+}
+
+/* ═══════════════ FORECAST ═══════════════ */
+function setMethod(m, btn) {
+  currentMethod=m;
+  document.querySelectorAll('.method-pill').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  updateForecast();
+}
+function getForecastData(historical, horizon, growthPct, method) {
+  const base = historical[historical.length-1];
+  const forecast=[]; const upper=[]; const lower=[];
+  const ci = parseFloat(document.getElementById('ciSelect').value);
+  const zMap={80:1.28,90:1.645,95:1.96};
+  const z=zMap[ci]||1.96;
+  for(let i=1;i<=horizon;i++){
+    let f;
+    if(method==='linear') f=base+(base*growthPct/100)*i;
+    else if(method==='exp') f=base*Math.pow(1+growthPct/100,i);
+    else { // seasonal
+      const seasonIdx=(11+i)%12;
+      const seasonal=[0.93,0.96,0.98,0.95,1.02,1.08,1.12,1.15,1.08,1.14,1.18,1.12];
+      f=base*(1+growthPct/100*i)*seasonal[seasonIdx];
+    }
+    const spread=f*0.04*Math.sqrt(i)*z;
+    forecast.push(Math.round(f)); upper.push(Math.round(f+spread)); lower.push(Math.round(f-spread));
+  }
+  return {forecast,upper,lower};
+}
+function initForecast() {
+  updateForecast();
+  buildScenarioChart();
+  buildResidualChart();
+}
+function updateForecast() {
+  const horizon=parseInt(document.getElementById('horizonSlider').value);
+  const growth=parseFloat(document.getElementById('growthSlider').value);
+  document.getElementById('horizonVal').textContent=horizon;
+  document.getElementById('growthVal').textContent=(growth>=0?'+':'')+growth.toFixed(1);
+  const historical=REGIONS.all.monthly;
+  const {forecast,upper,lower}=getForecastData(historical,horizon,growth,currentMethod);
+  const totalForecast=forecast.reduce((a,b)=>a+b,0);
+  const avgForecast=Math.round(totalForecast/horizon);
+  const totalHist=historical.reduce((a,b)=>a+b,0);
+  const projectedAnnual=totalHist+totalForecast;
+  document.getElementById('fcStats').innerHTML=`
+    <div class="fc-stat"><div class="fslabel">Projected annual</div><div class="fsval">$${(projectedAnnual/1000).toFixed(1)}M</div><div class="fssub">Full year incl. forecast</div></div>
+    <div class="fc-stat"><div class="fslabel">Avg monthly (fcast)</div><div class="fsval">$${avgForecast}K</div><div class="fssub">Over next ${horizon} months</div></div>
+    <div class="fc-stat"><div class="fslabel">Peak forecast</div><div class="fsval">$${Math.max(...forecast)}K</div><div class="fssub">Highest projected month</div></div>`;
+  const allLabels=MONTHS.slice(0,historical.length).concat(Array.from({length:horizon},(_,i)=>{const m=(11+i+1)%12;return MONTHS[m]+(m<11?'':' 25');}));
+  const histPad=historical.concat(Array(horizon).fill(null));
+  const fcPad=Array(historical.length-1).fill(null).concat([historical[historical.length-1]]).concat(forecast);
+  const upPad=Array(historical.length-1).fill(null).concat([historical[historical.length-1]]).concat(upper);
+  const loPad=Array(historical.length-1).fill(null).concat([historical[historical.length-1]]).concat(lower);
+  const ci=document.getElementById('ciSelect').value;
+  document.getElementById('fcChartLabel').textContent=`${currentMethod==='linear'?'Linear trend':currentMethod==='exp'?'Exponential':'Seasonal decomp'} · ${ci}% CI · ${horizon}mo horizon`;
+  const ctx=document.getElementById('forecastChart').getContext('2d');
+  if(forecastChart) forecastChart.destroy();
+  forecastChart=new Chart(ctx,{type:'line',data:{labels:allLabels,datasets:[
+    {label:'Historical',data:histPad,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.07)',tension:0.4,fill:true,pointRadius:2.5,pointBackgroundColor:'#378ADD',borderWidth:2,spanGaps:false},
+    {label:'Upper CI',data:upPad,borderColor:'rgba(127,119,221,0.2)',borderWidth:1,tension:0.4,fill:'+1',pointRadius:0,spanGaps:false},
+    {label:'Forecast',data:fcPad,borderColor:'#7F77DD',backgroundColor:'rgba(127,119,221,0.12)',borderDash:[],tension:0.4,fill:false,pointRadius:3,pointBackgroundColor:'#7F77DD',borderWidth:2,spanGaps:false},
+    {label:'Lower CI',data:loPad,borderColor:'rgba(127,119,221,0.2)',borderWidth:1,tension:0.4,fill:false,pointRadius:0,spanGaps:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y+'K'}}},scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#888',maxTicksLimit:14}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11},color:'#888',callback:v=>'$'+v+'K'}}}}});
+  const methodNotes={linear:'Linear trend extrapolation assumes a constant absolute increase per month. Best suited for stable, mature markets with consistent growth.',exp:'Exponential growth model compounds the growth rate each period. Appropriate for high-growth phases but tends to overestimate long-term.',seasonal:'Seasonal decomposition applies historical monthly seasonality factors on top of the trend. Most realistic for established businesses with clear annual patterns.'};
+  document.getElementById('fcNote').innerHTML=`<strong>Model note:</strong> ${methodNotes[currentMethod]} Confidence interval based on historical residual variance (z=${({80:'1.28',90:'1.64',95:'1.96'})[ci]}).`;
+}
+function buildScenarioChart() {
+  const historical=REGIONS.all.monthly;
+  const scenarios=[{label:'Bear (-1%/mo)',growth:-1,color:'#D85A30'},{label:'Base (+2%/mo)',growth:2,color:'#378ADD'},{label:'Bull (+5%/mo)',growth:5,color:'#1D9E75'}];
+  const ctx=document.getElementById('scenarioChart').getContext('2d');
+  if(scenarioChart) scenarioChart.destroy();
+  const labels=Array.from({length:6},(_,i)=>MONTHS[(11+i+1)%12]);
+  scenarioChart=new Chart(ctx,{type:'line',data:{labels,datasets:scenarios.map(s=>{
+    const {forecast}=getForecastData(historical,6,s.growth,'linear');
+    return {label:s.label,data:forecast,borderColor:s.color,backgroundColor:'transparent',tension:0.4,pointRadius:3,pointBackgroundColor:s.color,borderWidth:2};
+  })},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:10,padding:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#888'}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:10},color:'#888',callback:v=>'$'+v+'K'}}}}});
+}
+function buildResidualChart() {
+  const actual=[280,305,320,290,350,410,445,470,430,490,520,480];
+  const predicted=[275,300,325,295,345,405,440,465,435,488,518,482];
+  const residuals=actual.map((a,i)=>Math.round(((a-predicted[i])/predicted[i])*100*10)/10);
+  const ctx=document.getElementById('residualChart').getContext('2d');
+  if(residualChart) residualChart.destroy();
+  residualChart=new Chart(ctx,{type:'bar',data:{labels:MONTHS,datasets:[{label:'Residual %',data:residuals,backgroundColor:residuals.map(r=>r>=0?'rgba(29,158,117,0.5)':'rgba(216,90,48,0.5)'),borderColor:residuals.map(r=>r>=0?'#1D9E75':'#D85A30'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.parsed.y+'% error'}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#888'}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},title:{display:true,text:'% error',font:{size:10},color:'#888'}}}}});
+}
+
+/* ═══════════════ SQL EXPLORER ═══════════════ */
+const SCHEMAS={
+  orders:{title:'orders',cols:[{name:'order_id',type:'INT PK'},{name:'customer_id',type:'INT FK'},{name:'order_date',type:'DATE'},{name:'revenue',type:'DECIMAL'},{name:'status',type:'VARCHAR'},{name:'region',type:'VARCHAR'},{name:'category',type:'VARCHAR'}]},
+  customers:{title:'customers',cols:[{name:'customer_id',type:'INT PK'},{name:'first_order_date',type:'DATE'},{name:'segment',type:'VARCHAR'},{name:'country',type:'VARCHAR'},{name:'ltv',type:'DECIMAL'}]},
+  products:{title:'products',cols:[{name:'product_id',type:'INT PK'},{name:'name',type:'VARCHAR'},{name:'category',type:'VARCHAR'},{name:'cost',type:'DECIMAL'},{name:'price',type:'DECIMAL'}]},
+  sessions:{title:'sessions',cols:[{name:'session_id',type:'INT PK'},{name:'customer_id',type:'INT FK'},{name:'date',type:'DATE'},{name:'source',type:'VARCHAR'},{name:'converted',type:'BOOL'}]}
+};
+const QUERIES=[
+  {
+    title:'Monthly revenue by region',
+    schema:'orders',
+    insight:'APAC leads YoY growth at 24.1%. EMEA churn risk elevated — recommend targeted retention campaign in Q1 2025.',
+    sql:`<span class="sql-cmt">-- Monthly revenue breakdown with YoY growth rate</span>
+<span class="sql-kw">SELECT</span>
+    <span class="sql-fn">DATE_TRUNC</span>(<span class="sql-str">'month'</span>, order_date)  <span class="sql-kw">AS</span> <span class="sql-col">month</span>,
+    <span class="sql-col">region</span>,
+    <span class="sql-fn">SUM</span>(<span class="sql-col">revenue</span>)                       <span class="sql-kw">AS</span> <span class="sql-col">total_revenue</span>,
+    <span class="sql-fn">COUNT</span>(<span class="sql-col">order_id</span>)                     <span class="sql-kw">AS</span> <span class="sql-col">order_count</span>,
+    <span class="sql-fn">ROUND</span>(
+        (<span class="sql-fn">SUM</span>(<span class="sql-col">revenue</span>) - <span class="sql-fn">LAG</span>(<span class="sql-fn">SUM</span>(<span class="sql-col">revenue</span>), <span class="sql-num">12</span>)
+            <span class="sql-kw">OVER</span> (<span class="sql-kw">PARTITION BY</span> <span class="sql-col">region</span> <span class="sql-kw">ORDER BY</span> <span class="sql-fn">DATE_TRUNC</span>(<span class="sql-str">'month'</span>, order_date)))
+        / <span class="sql-fn">NULLIF</span>(<span class="sql-fn">LAG</span>(<span class="sql-fn">SUM</span>(<span class="sql-col">revenue</span>), <span class="sql-num">12</span>)
+            <span class="sql-kw">OVER</span> (<span class="sql-kw">PARTITION BY</span> <span class="sql-col">region</span> <span class="sql-kw">ORDER BY</span> <span class="sql-fn">DATE_TRUNC</span>(<span class="sql-str">'month'</span>, order_date)), <span class="sql-num">0</span>)
+        * <span class="sql-num">100</span>, <span class="sql-num">2</span>
+    )                                       <span class="sql-kw">AS</span> <span class="sql-col">yoy_growth_pct</span>
+<span class="sql-kw">FROM</span>   <span class="sql-tbl">orders</span>
+<span class="sql-kw">WHERE</span>  <span class="sql-col">status</span> <span class="sql-op">=</span> <span class="sql-str">'completed'</span>
+  <span class="sql-kw">AND</span>  order_date <span class="sql-op">&gt;=</span> <span class="sql-str">'2023-01-01'</span>
+<span class="sql-kw">GROUP BY</span> <span class="sql-num">1</span>, <span class="sql-num">2</span>
+<span class="sql-kw">ORDER BY</span> <span class="sql-num">1</span>, <span class="sql-num">2</span>;`,
+    results:{headers:['Month','Region','Revenue','Orders','YoY Growth'],rows:[
+      ['Dec 2024','APAC','$185K','1,210','+24.1%'],['Dec 2024','EMEA','$160K','1,050','+15.0%'],['Dec 2024','Americas','$135K','980','+12.0%'],
+      ['Nov 2024','APAC','$210K','1,350','+22.4%'],['Nov 2024','EMEA','$180K','1,180','+16.8%'],['Nov 2024','Americas','$130K','960','+11.5%'],
+    ]}
+  },
+  {
+    title:'Customer cohort retention',
+    schema:'customers',
+    insight:'M1 retention improved from 64% (Jan cohort) to 74% (May cohort) following onboarding redesign. Strong signal — roll out to all new users.',
+    sql:`<span class="sql-cmt">-- Cohort retention: % of customers still active by month</span>
+<span class="sql-kw">WITH</span> <span class="sql-col">cohort_base</span> <span class="sql-kw">AS</span> (
+    <span class="sql-kw">SELECT</span>
+        <span class="sql-col">customer_id</span>,
+        <span class="sql-fn">DATE_TRUNC</span>(<span class="sql-str">'month'</span>, first_order_date) <span class="sql-kw">AS</span> <span class="sql-col">cohort_month</span>
+    <span class="sql-kw">FROM</span> <span class="sql-tbl">customers</span>
+),
+<span class="sql-col">activity</span> <span class="sql-kw">AS</span> (
+    <span class="sql-kw">SELECT</span>
+        <span class="sql-col">c.customer_id</span>,
+        <span class="sql-col">c.cohort_month</span>,
+        <span class="sql-fn">DATE_TRUNC</span>(<span class="sql-str">'month'</span>, <span class="sql-col">o.order_date</span>) <span class="sql-kw">AS</span> <span class="sql-col">activity_month</span>
+    <span class="sql-kw">FROM</span> <span class="sql-tbl">cohort_base</span> <span class="sql-col">c</span>
+    <span class="sql-kw">JOIN</span> <span class="sql-tbl">orders</span> <span class="sql-col">o</span> <span class="sql-kw">USING</span> (<span class="sql-col">customer_id</span>)
+)
+<span class="sql-kw">SELECT</span>
+    <span class="sql-col">cohort_month</span>,
+    <span class="sql-fn">DATEDIFF</span>(<span class="sql-str">'month'</span>, <span class="sql-col">cohort_month</span>, <span class="sql-col">activity_month</span>) <span class="sql-kw">AS</span> <span class="sql-col">months_since_join</span>,
+    <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-col">customer_id</span>) <span class="sql-op">/</span>
+        <span class="sql-fn">FIRST_VALUE</span>(<span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-col">customer_id</span>))
+        <span class="sql-kw">OVER</span> (<span class="sql-kw">PARTITION BY</span> <span class="sql-col">cohort_month</span> <span class="sql-kw">ORDER BY</span> <span class="sql-col">months_since_join</span>)
+        * <span class="sql-num">100.0</span>                             <span class="sql-kw">AS</span> <span class="sql-col">retention_rate</span>
+<span class="sql-kw">FROM</span> <span class="sql-tbl">activity</span>
+<span class="sql-kw">GROUP BY</span> <span class="sql-num">1</span>, <span class="sql-num">2</span>
+<span class="sql-kw">ORDER BY</span> <span class="sql-num">1</span>, <span class="sql-num">2</span>;`,
+    results:{headers:['Cohort','M0','M1','M2','M3','M4','M5'],rows:[
+      ['Jan 2024','100%','68%','54%','48%','42%','38%'],
+      ['Feb 2024','100%','71%','57%','50%','44%','—'],
+      ['Mar 2024','100%','69%','55%','49%','—','—'],
+      ['Apr 2024','100%','72%','58%','—','—','—'],
+      ['May 2024','100%','74%','—','—','—','—'],
+    ]}
+  },
+  {
+    title:'Conversion funnel',
+    schema:'sessions',
+    insight:'Session-to-purchase rate is 7.4%. Cart abandonment (34% drop at checkout) is the biggest lever — estimated $380K revenue recovery opportunity.',
+    sql:`<span class="sql-cmt">-- Full conversion funnel from sessions to purchase</span>
+<span class="sql-kw">WITH</span> <span class="sql-col">funnel</span> <span class="sql-kw">AS</span> (
+    <span class="sql-kw">SELECT</span>
+        <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-col">session_id</span>)                           <span class="sql-kw">AS</span> <span class="sql-col">sessions</span>,
+        <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-kw">CASE WHEN</span> <span class="sql-col">viewed_product</span> <span class="sql-kw">THEN</span> <span class="sql-col">session_id</span> <span class="sql-kw">END</span>) <span class="sql-kw">AS</span> <span class="sql-col">product_views</span>,
+        <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-kw">CASE WHEN</span> <span class="sql-col">added_to_cart</span> <span class="sql-kw">THEN</span> <span class="sql-col">session_id</span> <span class="sql-kw">END</span>)  <span class="sql-kw">AS</span> <span class="sql-col">cart_adds</span>,
+        <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-kw">CASE WHEN</span> <span class="sql-col">started_checkout</span> <span class="sql-kw">THEN</span> <span class="sql-col">session_id</span> <span class="sql-kw">END</span>) <span class="sql-kw">AS</span> <span class="sql-col">checkouts</span>,
+        <span class="sql-fn">COUNT</span>(<span class="sql-kw">DISTINCT</span> <span class="sql-kw">CASE WHEN</span> <span class="sql-col">converted</span> <span class="sql-kw">THEN</span> <span class="sql-col">session_id</span> <span class="sql-kw">END</span>)    <span class="sql-kw">AS</span> <span class="sql-col">purchases</span>
+    <span class="sql-kw">FROM</span> <span class="sql-tbl">sessions</span>
+    <span class="sql-kw">WHERE</span> <span class="sql-col">date</span> <span class="sql-op">&gt;=</span> <span class="sql-str">'2024-01-01'</span>
+)
+<span class="sql-kw">SELECT</span>
+    <span class="sql-col">stage</span>, <span class="sql-col">users</span>,
+    <span class="sql-fn">ROUND</span>(<span class="sql-col">users</span> <span class="sql-op">/</span> <span class="sql-fn">MAX</span>(<span class="sql-col">users</span>) <span class="sql-kw">OVER</span>() * <span class="sql-num">100</span>, <span class="sql-num">1</span>) <span class="sql-kw">AS</span> <span class="sql-col">pct_of_top</span>,
+    <span class="sql-fn">ROUND</span>(<span class="sql-col">users</span> <span class="sql-op">/</span> <span class="sql-fn">LAG</span>(<span class="sql-col">users</span>) <span class="sql-kw">OVER</span>(<span class="sql-kw">ORDER BY</span> <span class="sql-col">step</span>) * <span class="sql-num">100</span>, <span class="sql-num">1</span>) <span class="sql-kw">AS</span> <span class="sql-col">step_cvr</span>
+<span class="sql-kw">FROM</span> <span class="sql-tbl">funnel</span>
+<span class="sql-kw">UNPIVOT</span> (<span class="sql-col">users</span> <span class="sql-kw">FOR</span> <span class="sql-col">stage</span> <span class="sql-kw">IN</span> (sessions, product_views, cart_adds, checkouts, purchases));`,
+    results:{headers:['Stage','Users','% of Top','Step CVR'],rows:[
+      ['Sessions','520,000','100%','—'],
+      ['Product views','210,000','40.4%','40.4%'],
+      ['Cart adds','96,000','18.5%','45.7%'],
+      ['Checkouts','63,000','12.1%','65.6%'],
+      ['Purchases','38,490','7.4%','61.1%'],
+    ]}
+  },
+  {
+    title:'RFM segmentation',
+    schema:'customers',
+    insight:'Champions (18% of base) drive 52% of revenue. "At Risk" segment has 2,400 customers worth $1.1M LTV — high-priority retention target.',
+    sql:`<span class="sql-cmt">-- RFM customer segmentation</span>
+<span class="sql-kw">WITH</span> <span class="sql-col">rfm_raw</span> <span class="sql-kw">AS</span> (
+    <span class="sql-kw">SELECT</span>
+        <span class="sql-col">customer_id</span>,
+        <span class="sql-fn">DATEDIFF</span>(<span class="sql-str">'day'</span>, <span class="sql-fn">MAX</span>(<span class="sql-col">order_date</span>), <span class="sql-fn">CURRENT_DATE</span>()) <span class="sql-kw">AS</span> <span class="sql-col">recency</span>,
+        <span class="sql-fn">COUNT</span>(<span class="sql-col">order_id</span>)                                       <span class="sql-kw">AS</span> <span class="sql-col">frequency</span>,
+        <span class="sql-fn">SUM</span>(<span class="sql-col">revenue</span>)                                          <span class="sql-kw">AS</span> <span class="sql-col">monetary</span>
+    <span class="sql-kw">FROM</span> <span class="sql-tbl">orders</span>
+    <span class="sql-kw">WHERE</span> <span class="sql-col">status</span> <span class="sql-op">=</span> <span class="sql-str">'completed'</span>
+    <span class="sql-kw">GROUP BY</span> <span class="sql-num">1</span>
+),
+<span class="sql-col">rfm_scores</span> <span class="sql-kw">AS</span> (
+    <span class="sql-kw">SELECT</span> *,
+        <span class="sql-fn">NTILE</span>(<span class="sql-num">5</span>) <span class="sql-kw">OVER</span> (<span class="sql-kw">ORDER BY</span> <span class="sql-col">recency</span> <span class="sql-kw">DESC</span>) <span class="sql-kw">AS</span> <span class="sql-col">r_score</span>,
+        <span class="sql-fn">NTILE</span>(<span class="sql-num">5</span>) <span class="sql-kw">OVER</span> (<span class="sql-kw">ORDER BY</span> <span class="sql-col">frequency</span>)     <span class="sql-kw">AS</span> <span class="sql-col">f_score</span>,
+        <span class="sql-fn">NTILE</span>(<span class="sql-num">5</span>) <span class="sql-kw">OVER</span> (<span class="sql-kw">ORDER BY</span> <span class="sql-col">monetary</span>)      <span class="sql-kw">AS</span> <span class="sql-col">m_score</span>
+    <span class="sql-kw">FROM</span> <span class="sql-tbl">rfm_raw</span>
+)
+<span class="sql-kw">SELECT</span>
+    <span class="sql-kw">CASE</span>
+        <span class="sql-kw">WHEN</span> r_score <span class="sql-op">&gt;=</span> <span class="sql-num">4</span> <span class="sql-kw">AND</span> f_score <span class="sql-op">&gt;=</span> <span class="sql-num">4</span> <span class="sql-kw">THEN</span> <span class="sql-str">'Champions'</span>
+        <span class="sql-kw">WHEN</span> r_score <span class="sql-op">&gt;=</span> <span class="sql-num">3</span> <span class="sql-kw">AND</span> f_score <span class="sql-op">&gt;=</span> <span class="sql-num">3</span> <span class="sql-kw">THEN</span> <span class="sql-str">'Loyal customers'</span>
+        <span class="sql-kw">WHEN</span> r_score <span class="sql-op">&gt;=</span> <span class="sql-num">4</span> <span class="sql-kw">AND</span> f_score <span class="sql-op">&lt;=</span> <span class="sql-num">2</span> <span class="sql-kw">THEN</span> <span class="sql-str">'New customers'</span>
+        <span class="sql-kw">WHEN</span> r_score <span class="sql-op">&lt;=</span> <span class="sql-num">2</span> <span class="sql-kw">AND</span> f_score <span class="sql-op">&gt;=</span> <span class="sql-num">3</span> <span class="sql-kw">THEN</span> <span class="sql-str">'At risk'</span>
+        <span class="sql-kw">ELSE</span> <span class="sql-str">'Others'</span>
+    <span class="sql-kw">END</span>                          <span class="sql-kw">AS</span> <span class="sql-col">segment</span>,
+    <span class="sql-fn">COUNT</span>(*)                     <span class="sql-kw">AS</span> <span class="sql-col">customers</span>,
+    <span class="sql-fn">ROUND</span>(<span class="sql-fn">AVG</span>(<span class="sql-col">monetary</span>), <span class="sql-num">2</span>)   <span class="sql-kw">AS</span> <span class="sql-col">avg_ltv</span>,
+    <span class="sql-fn">ROUND</span>(<span class="sql-fn">AVG</span>(<span class="sql-col">recency</span>), <span class="sql-num">0</span>)   <span class="sql-kw">AS</span> <span class="sql-col">avg_days_since</span>
+<span class="sql-kw">FROM</span> <span class="sql-tbl">rfm_scores</span>
+<span class="sql-kw">GROUP BY</span> <span class="sql-num">1</span>
+<span class="sql-kw">ORDER BY</span> avg_ltv <span class="sql-kw">DESC</span>;`,
+    results:{headers:['Segment','Customers','Avg LTV','Avg Days Since Last Order'],rows:[
+      ['Champions','6,928','$458','12'],
+      ['Loyal customers','11,540','$234','28'],
+      ['New customers','8,260','$112','8'],
+      ['At risk','2,412','$318','94'],
+      ['Others','9,350','$67','145'],
+    ]}
+  },
+  {
+    title:'Product margin analysis',
+    schema:'products',
+    insight:'USB-C Hub has highest volume but lowest margin (22%). Bundling with high-margin accessories could improve blended margin by ~8pp.',
+    sql:`<span class="sql-cmt">-- Product profitability: revenue, cost, and margin by SKU</span>
+<span class="sql-kw">SELECT</span>
+    <span class="sql-col">p.name</span>                                          <span class="sql-kw">AS</span> <span class="sql-col">product</span>,
+    <span class="sql-col">p.category</span>,
+    <span class="sql-fn">SUM</span>(<span class="sql-col">o.revenue</span>)                                  <span class="sql-kw">AS</span> <span class="sql-col">total_revenue</span>,
+    <span class="sql-fn">SUM</span>(<span class="sql-col">o.quantity</span> <span class="sql-op">*</span> <span class="sql-col">p.cost</span>)                       <span class="sql-kw">AS</span> <span class="sql-col">total_cost</span>,
+    <span class="sql-fn">SUM</span>(<span class="sql-col">o.revenue</span>) <span class="sql-op">-</span> <span class="sql-fn">SUM</span>(<span class="sql-col">o.quantity</span> <span class="sql-op">*</span> <span class="sql-col">p.cost</span>)   <span class="sql-kw">AS</span> <span class="sql-col">gross_profit</span>,
+    <span class="sql-fn">ROUND</span>(
+        (<span class="sql-fn">SUM</span>(<span class="sql-col">o.revenue</span>) <span class="sql-op">-</span> <span class="sql-fn">SUM</span>(<span class="sql-col">o.quantity</span> <span class="sql-op">*</span> <span class="sql-col">p.cost</span>))
+        <span class="sql-op">/</span> <span class="sql-fn">NULLIF</span>(<span class="sql-fn">SUM</span>(<span class="sql-col">o.revenue</span>), <span class="sql-num">0</span>) * <span class="sql-num">100</span>, <span class="sql-num">1</span>
+    )                                                  <span class="sql-kw">AS</span> <span class="sql-col">margin_pct</span>,
+    <span class="sql-fn">RANK</span>() <span class="sql-kw">OVER</span> (<span class="sql-kw">ORDER BY</span> <span class="sql-fn">SUM</span>(<span class="sql-col">o.revenue</span>) <span class="sql-kw">DESC</span>)   <span class="sql-kw">AS</span> <span class="sql-col">revenue_rank</span>
+<span class="sql-kw">FROM</span>   <span class="sql-tbl">orders</span> <span class="sql-col">o</span>
+<span class="sql-kw">JOIN</span>   <span class="sql-tbl">products</span> <span class="sql-col">p</span> <span class="sql-kw">USING</span> (<span class="sql-col">product_id</span>)
+<span class="sql-kw">WHERE</span>  <span class="sql-col">o.status</span> <span class="sql-op">=</span> <span class="sql-str">'completed'</span>
+  <span class="sql-kw">AND</span>  <span class="sql-col">o.order_date</span> <span class="sql-op">&gt;=</span> <span class="sql-str">'2024-01-01'</span>
+<span class="sql-kw">GROUP BY</span> <span class="sql-num">1</span>, <span class="sql-num">2</span>
+<span class="sql-kw">ORDER BY</span> total_revenue <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">10</span>;`,
+    results:{headers:['Product','Revenue','Cost','Gross Profit','Margin','Rank'],rows:[
+      ['ProBook Air 14"','$412K','$255K','$157K','38.1%','#1'],
+      ['Urban Parka (M)','$198K','$95K','$103K','52.0%','#2'],
+      ['SmartHome Hub v2','$175K','$103K','$72K','41.1%','#3'],
+      ['Yoga Mat Pro','$120K','$43K','$77K','64.2%','#4'],
+      ['Wireless Buds X','$113K','$80K','$33K','29.2%','#5'],
+      ['USB-C Hub 7-in-1','$74K','$58K','$16K','21.6%','#8'],
+    ]}
+  }
+];
+
+function initSQL() {
+  loadQuery(0, document.querySelector('.query-btn'));
+}
+
+function loadQuery(idx, btn) {
+  document.querySelectorAll('.query-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const q=QUERIES[idx];
+  document.getElementById('queryTitle').textContent=q.title;
+  document.getElementById('sqlCode').innerHTML=q.sql;
+  const schema=SCHEMAS[q.schema];
+  document.getElementById('schemaBox').innerHTML=`<div class="schema-title">📋 ${schema.title}</div>`+schema.cols.map(c=>`<div class="schema-col"><span>${c.name}</span><span class="schema-type">${c.type}</span></div>`).join('');
+  document.getElementById('resultTable').innerHTML='';
+  document.getElementById('resultRows').textContent='';
+  document.getElementById('execTime').textContent='';
+  document.getElementById('queryInsight').textContent='';
+  window._currentQuery=idx;
+}
+
+function runQuery() {
+  const btn=document.getElementById('runBtn');
+  const spinner=document.getElementById('runBtnSpinner');
+  btn.disabled=true; spinner.style.display='inline-block';
+  const delay=600+Math.random()*800;
+  setTimeout(()=>{
+    btn.disabled=false; spinner.style.display='none';
+    const q=QUERIES[window._currentQuery||0];
+    const execMs=Math.round(delay);
+    document.getElementById('resultRows').textContent=`· ${q.results.rows.length} rows`;
+    document.getElementById('execTime').textContent=`${execMs}ms`;
+    const thead='<thead><tr>'+q.results.headers.map(h=>`<th>${h}</th>`).join('')+'</tr></thead>';
+    const tbody='<tbody>'+q.results.rows.map(r=>'<tr>'+r.map((cell,i)=>{
+      let style='';
+      const h=q.results.headers[i];
+      if(h==='Margin'||h==='margin_pct') { const v=parseFloat(cell); style=v>=50?'color:var(--teal);font-weight:500':v>=35?'color:var(--amber)':'color:var(--coral)'; }
+      if(h==='YoY Growth') style=cell.startsWith('+')?'color:var(--teal);font-weight:500':'color:var(--coral);font-weight:500';
+      if(h==='Trend'||h==='step_cvr') style='color:var(--text2)';
+      return `<td style="${style}">${cell}</td>`;
+    }).join('')+'</tr>').join('')+'</tbody>';
+    document.getElementById('resultTable').innerHTML=`<table>${thead}${tbody}</table>`;
+    document.getElementById('queryInsight').innerHTML=`<strong>Analyst insight:</strong> ${q.insight}`;
+  }, delay);
+}
+
+/* ═══════════════ INIT ═══════════════ */
+buildTrendChart('all'); buildCatChart('all'); buildFunnel(); buildRegionBars('all'); buildCohort(); buildTable('all');
+</script>
+</body>
+</html>
