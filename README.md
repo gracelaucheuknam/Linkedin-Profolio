@@ -141,10 +141,3 @@ ecommerce-analytics-dashboard/
 ```
 
 ---
-
-## 📬 Contact
-
-Built by a data analyst who believes **good analysis tells a story, not just a number**.
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=flat-square&logo=linkedin)](https://linkedin.com/in/your-profile)
-[![Email](https://img.shields.io/badge/Email-Say_hello-D85A30?style=flat-square)](mailto:your@email.com)
